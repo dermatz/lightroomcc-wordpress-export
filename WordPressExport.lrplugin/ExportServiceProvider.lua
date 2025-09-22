@@ -14,13 +14,11 @@ local LrView = import 'LrView'
 local LrBinding = import 'LrBinding'
 local LrDialogs = import 'LrDialogs'
 local LrPrefs = import 'LrPrefs'
-local LrPathUtils = import 'LrPathUtils'
 local LrFileUtils = import 'LrFileUtils'
 local LrFunctionContext = import 'LrFunctionContext'
 local LrTasks = import 'LrTasks'
 
 local UploadTask = require 'UploadTask'
-local PluginInfoDialog = require 'PluginInfoDialog'
 
 local exportServiceProvider = {}
 
@@ -197,10 +195,6 @@ exportServiceProvider.processRenderedPhotos = function(functionContext, exportCo
 		exportParams.wordpressUsername = wordpressUsername
 		exportParams.wordpressPassword = wordpressPassword
 
-		-- Einstellungen für späteren Gebrauch speichern (ohne Passwort!)
-		prefs.wordpressUrl = wordpressUrl
-		prefs.wordpressUsername = wordpressUsername
-
 		-- Progress Setup
 		local progressScope = exportContext:configureProgress {
 			title = "WordPress Upload",
@@ -290,18 +284,6 @@ exportServiceProvider.startDialog = function(propertyTable)
 
 end
 
-exportServiceProvider.sectionsForBottomOfDialog = function(f, propertyTable)
-	return {}
-end
-
-exportServiceProvider.hideSections = function(propertyTable)
-	return {}
-end
-
-exportServiceProvider.hideIfEmpty = function()
-	return false
-end
-
 -- Preset-Unterstützung
 exportServiceProvider.exportPresetFields = function()
 	return {
@@ -309,20 +291,6 @@ exportServiceProvider.exportPresetFields = function()
 		{ key = 'wordpressUsername', default = "" },
 		{ key = 'wordpressPassword', default = "" },
 	}
-end
-
--- Validierung und Property-Behandlung
-exportServiceProvider.didFinishDialog = function(propertyTable, why)
-	-- Beim OK klicken - Properties speichern (inklusive Application Password)
-	if why == "ok" then
-		prefs.wordpressUrl = propertyTable.wordpressUrl or ""
-		prefs.wordpressUsername = propertyTable.wordpressUsername or ""
-		prefs.wordpressPassword = propertyTable.wordpressPassword or ""
-	end
-end
-
-exportServiceProvider.endDialog = function(propertyTable, why)
-	-- Cleanup wenn nötig
 end
 
 --------------------------------------------------------------------------------
