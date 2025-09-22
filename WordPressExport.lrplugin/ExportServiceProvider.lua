@@ -130,7 +130,7 @@ exportServiceProvider.sectionsForTopOfDialog = function(f, propertyTable)
 					},
 
 					f:static_text {
-						title = "Erstellen Sie ein Application Password unter: Benutzer → Profil → Anwendungspasswörter",
+						title = "Application Password wird sicher gespeichert. Erstellen Sie eins unter:\nBenutzer → Profil → Anwendungspasswörter",
 						font = "<system/small>",
 						width_in_chars = 50,
 						height_in_lines = 2,
@@ -171,30 +171,23 @@ exportServiceProvider.processRenderedPhotos = function(functionContext, exportCo
 		local exportParams = exportContext.propertyTable
 		local nPhotos = exportSession:countRenditions()
 
-		-- DEBUG: Werte ausgeben zum Testen
-		LrDialogs.message("Debug Info",
-			string.format("URL: '%s'\nUsername: '%s'\nPassword: '%s'",
-				exportParams.wordpressUrl or "NIL",
-				exportParams.wordpressUsername or "NIL",
-				exportParams.wordpressPassword and "***" or "NIL"), "info")
-
-		-- Einstellungen bereinigen (Whitespace entfernen)
-		local wordpressUrl = exportParams.wordpressUrl and string.gsub(exportParams.wordpressUrl, "^%s*(.-)%s*$", "%1") or ""
-		local wordpressUsername = exportParams.wordpressUsername and string.gsub(exportParams.wordpressUsername, "^%s*(.-)%s*$", "%1") or ""
-		local wordpressPassword = exportParams.wordpressPassword and string.gsub(exportParams.wordpressPassword, "^%s*(.-)%s*$", "%1") or ""
+		-- Direkte Verwendung der Werte mit Preference-Fallback
+		local wordpressUrl = exportParams.wordpressUrl or prefs.wordpressUrl or ""
+		local wordpressUsername = exportParams.wordpressUsername or prefs.wordpressUsername or ""
+		local wordpressPassword = exportParams.wordpressPassword or prefs.wordpressPassword or ""
 
 		-- Einstellungen validieren
-		if wordpressUrl == "" then
+		if not wordpressUrl or wordpressUrl == "" then
 			LrDialogs.message("WordPress Export Fehler", "Bitte geben Sie eine WordPress-URL ein.", "critical")
 			return
 		end
 
-		if wordpressUsername == "" then
+		if not wordpressUsername or wordpressUsername == "" then
 			LrDialogs.message("WordPress Export Fehler", "Bitte geben Sie einen Benutzernamen ein.", "critical")
 			return
 		end
 
-		if wordpressPassword == "" then
+		if not wordpressPassword or wordpressPassword == "" then
 			LrDialogs.message("WordPress Export Fehler", "Bitte geben Sie ein Passwort ein.", "critical")
 			return
 		end
@@ -275,19 +268,25 @@ end
 exportServiceProvider.startDialog = function(propertyTable)
 
 	-- Properties explizit initialisieren
-	propertyTable:addObserver('wordpressUrl', function() end)
-	propertyTable:addObserver('wordpressUsername', function() end)
-	propertyTable:addObserver('wordpressPassword', function() end)
+	propertyTable:addObserver('wordpressUrl', function()
+		-- Sofort speichern bei Änderung
+		prefs.wordpressUrl = propertyTable.wordpressUrl or ""
+	end)
 
-	-- Gespeicherte Einstellungen laden
+	propertyTable:addObserver('wordpressUsername', function()
+		-- Sofort speichern bei Änderung
+		prefs.wordpressUsername = propertyTable.wordpressUsername or ""
+	end)
+
+	propertyTable:addObserver('wordpressPassword', function()
+		-- Sofort speichern bei Änderung
+		prefs.wordpressPassword = propertyTable.wordpressPassword or ""
+	end)
+
+	-- Gespeicherte Einstellungen laden (inklusive Application Password)
 	propertyTable.wordpressUrl = prefs.wordpressUrl or ""
 	propertyTable.wordpressUsername = prefs.wordpressUsername or ""
-	propertyTable.wordpressPassword = "" -- Passwort nie speichern
-
-	-- DEBUG: Prüfen ob Properties gesetzt werden
-	-- LrDialogs.message("StartDialog Debug",
-	--	string.format("Loaded:\nURL: '%s'\nUsername: '%s'",
-	--		propertyTable.wordpressUrl, propertyTable.wordpressUsername), "info")
+	propertyTable.wordpressPassword = prefs.wordpressPassword or ""
 
 end
 
@@ -303,30 +302,6 @@ exportServiceProvider.hideIfEmpty = function()
 	return false
 end
 
--- Validierung vor dem Export
-exportServiceProvider.updateExportSettings = function(propertyTable)
-	-- Diese Funktion wird vor dem Export aufgerufen
-	-- Hier können wir die Eingaben validieren und bereinigen
-
-	-- Sicherstellen dass Properties existieren
-	propertyTable.wordpressUrl = propertyTable.wordpressUrl or ""
-	propertyTable.wordpressUsername = propertyTable.wordpressUsername or ""
-	propertyTable.wordpressPassword = propertyTable.wordpressPassword or ""
-
-	-- Trimming der Eingaben
-	if propertyTable.wordpressUrl then
-		propertyTable.wordpressUrl = string.gsub(propertyTable.wordpressUrl, "^%s*(.-)%s*$", "%1")
-	end
-
-	if propertyTable.wordpressUsername then
-		propertyTable.wordpressUsername = string.gsub(propertyTable.wordpressUsername, "^%s*(.-)%s*$", "%1")
-	end
-
-	if propertyTable.wordpressPassword then
-		propertyTable.wordpressPassword = string.gsub(propertyTable.wordpressPassword, "^%s*(.-)%s*$", "%1")
-	end
-end
-
 -- Preset-Unterstützung
 exportServiceProvider.exportPresetFields = function()
 	return {
@@ -338,11 +313,11 @@ end
 
 -- Validierung und Property-Behandlung
 exportServiceProvider.didFinishDialog = function(propertyTable, why)
-	-- Beim OK klicken - Properties speichern
+	-- Beim OK klicken - Properties speichern (inklusive Application Password)
 	if why == "ok" then
 		prefs.wordpressUrl = propertyTable.wordpressUrl or ""
 		prefs.wordpressUsername = propertyTable.wordpressUsername or ""
-		-- Passwort nie speichern
+		prefs.wordpressPassword = propertyTable.wordpressPassword or ""
 	end
 end
 
