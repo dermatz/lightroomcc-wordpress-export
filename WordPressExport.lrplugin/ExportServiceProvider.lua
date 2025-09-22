@@ -20,6 +20,7 @@ local LrFunctionContext = import 'LrFunctionContext'
 local LrTasks = import 'LrTasks'
 
 local UploadTask = require 'UploadTask'
+local PluginInfoDialog = require 'PluginInfoDialog'
 
 local exportServiceProvider = {}
 
@@ -150,6 +151,38 @@ exportServiceProvider.sectionsForTopOfDialog = function(f, propertyTable)
 						font = "<system/small>",
 						width_in_chars = 55,
 						height_in_lines = 2,
+					},
+				},
+
+				f:spacer { height = 15 },
+
+				-- Plugin Info Button
+				f:row {
+					f:static_text {
+						title = "",
+						width = LrView.share 'label_width'
+					},
+
+					f:push_button {
+						title = "🔧 Plugin-Informationen & Updates",
+						action = function()
+							PluginInfoDialog.showDialog()
+						end,
+						tooltip = "Zeigt Plugin-Informationen und Versionsüberprüfung an"
+					},
+				},
+
+				-- Plugin Info Hinweis
+				f:row {
+					f:static_text {
+						title = "",
+						width = LrView.share 'label_width'
+					},
+
+					f:static_text {
+						title = "Versionsüberprüfung, Support und Plugin-Details",
+						font = "<system/small>",
+						width_in_chars = 50,
 					},
 				},
 			},
