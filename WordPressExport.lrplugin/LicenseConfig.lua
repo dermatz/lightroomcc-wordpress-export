@@ -72,10 +72,10 @@ LicenseConfig.MESSAGES = {
 -- Entwickler-Optionen
 LicenseConfig.DEBUG = {
     -- Aktiviert erweiterte Protokollierung
-    enabled = true,
+    enabled = false,
 
     -- Protokolliert HTTP-Anfragen und -Antworten
-    logHttpRequests = true,
+    logHttpRequests = false,
 
     -- Verwendet Test-Lizenzschlüssel für Entwicklung
     useTestLicense = false,

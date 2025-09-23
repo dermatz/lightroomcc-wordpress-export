@@ -5,13 +5,7 @@ Lizenz-Verwaltung für WordPress Export Plugin
 
 --------------------------------------------------------------------------------
 
-Verwaltet die Plugi            local data = parseJsonResponse(response)
-
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Activate Decision", "data.valid = " .. tostring(data.valid) .. "\ndata.valid == true? " .. tostring(data.valid == true) .. "\nType of data.valid: " .. type(data.valid))
-            end
-
-            -- Prüfe auf API-Authentifizierungsfehlerizenzierung über eine sichere Middleware-Proxy.
+Verwaltet die Plugin-Lizenzierung über eine sichere Middleware-Proxy.
 Die API-Keys sind sicher auf dem Server gespeichert, nicht im Client.
 
 Middleware-Endpunkte:
@@ -27,19 +21,6 @@ local LrDialogs = import 'LrDialogs'
 
 local LicenseConfig = require 'LicenseConfig'
 local LicenseManager = {}
-
--- Debug-Funktion für sichtbare Meldungen
-local function debugMessage(title, message)
-    if LicenseConfig.DEBUG.enabled then
-        LrDialogs.message("DEBUG: " .. title, message, "info")
-    end
-end
-
--- Test-Funktion um zu prüfen ob der LicenseManager geladen ist
-function LicenseManager.testConnection()
-    debugMessage("Test Connection", "LicenseManager ist geladen und funktioniert!")
-    return true
-end
 
 -- Lizenz-Status Konstanten
 local LICENSE_STATUS = {
@@ -64,38 +45,24 @@ end
 local function parseJsonResponse(jsonString)
     local result = {}
 
-    -- Debug-Logging mit sichtbaren Dialogs
-    if LicenseConfig.DEBUG.enabled then
-        debugMessage("JSON Parser", "Raw JSON Response: " .. tostring(jsonString))
-    end
-
     -- Einfacher JSON-Parser für die benötigten Felder
     if jsonString then
         -- Valid Flag extrahieren
         local validMatch = string.match(jsonString, '"valid"%s*:%s*([^,}]+)')
         if validMatch then
             result.valid = string.lower(validMatch:gsub("%s", "")) == "true"
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Valid Field", "Found validMatch: " .. tostring(validMatch) .. " -> parsed as: " .. tostring(result.valid))
-            end
         end
 
         -- Status extrahieren
         local status = string.match(jsonString, '"status"%s*:%s*"([^"]*)"')
         if status then
             result.status = status
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Status Field", "Found status: " .. tostring(status))
-            end
         end
 
         -- Fehlermeldungen extrahieren
         local message = string.match(jsonString, '"message"%s*:%s*"([^"]*)"')
         if message then
             result.message = message
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Message Field", "Found message: " .. tostring(message))
-            end
         end
 
         -- Error-Code extrahieren (WooCommerce API Fehler)
@@ -120,10 +87,6 @@ local function parseJsonResponse(jsonString)
         local activationsLeft = string.match(jsonString, '"activationsLeft"%s*:%s*(-?%d+)')
         if activationsLeft then
             result.activationsLeft = tonumber(activationsLeft)
-        end
-
-        if LicenseConfig.DEBUG.enabled then
-            debugMessage("Parse Result", "result.valid = " .. tostring(result.valid) .. "\nresult.status = " .. tostring(result.status) .. "\nresult.message = " .. tostring(result.message))
         end
     end
 
@@ -153,59 +116,40 @@ function LicenseManager.validateLicense(licenseKey, callback)
         local url = LicenseConfig.getProxyUrl("validate", licenseKey)
         local headers = createHeaders()
 
-        if LicenseConfig.DEBUG.enabled then
-            debugMessage("Validation Start", "License Key: " .. tostring(licenseKey) .. "\nURL: " .. tostring(url))
-        end
-
         -- Verwende LrHttp.get direkt ohne pcall
         local response, headers_response = LrHttp.get(url, headers)
 
         if response and response ~= "" then
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("HTTP Response", "Success! Response length: " .. string.len(response))
-            end
+            local data = parseJsonResponse(response)
 
-            local data = parseJsonResponse(response)        if LicenseConfig.DEBUG.enabled then
-            debugMessage("Validation Decision", "data.valid = " .. tostring(data.valid) .. "\ndata.valid == true? " .. tostring(data.valid == true))
-        end
+            if data.valid == true then
+                -- Gültige Lizenz - in Preferences speichern
+                local prefs = getPrefs()
+                prefs.licenseKey = licenseKey
+                prefs.licenseValid = true
+                prefs.licenseStatus = data.status
+                prefs.lastValidation = os.time()
 
-        if data.valid == true then
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Validation Result", "SUCCESS - License is valid!")
-            end
-            -- Gültige Lizenz - in Preferences speichern
-            local prefs = getPrefs()
-            prefs.licenseKey = licenseKey
-            prefs.licenseValid = true
-            prefs.licenseStatus = data.status
-            prefs.lastValidation = os.time()
+                if callback then
+                    callback(true, LicenseConfig.MESSAGES.validationSuccess, data)
+                end
+            else
+                -- Ungültige Lizenz - aus Preferences entfernen
+                local prefs = getPrefs()
+                prefs.licenseKey = nil
+                prefs.licenseValid = false
+                prefs.licenseStatus = nil
 
-            if callback then
-                callback(true, LicenseConfig.MESSAGES.validationSuccess, data)
+                local errorMsg = data.message or LicenseConfig.MESSAGES.invalidLicense
+                if data.status == LICENSE_STATUS.EXPIRED then
+                    errorMsg = LicenseConfig.MESSAGES.expiredLicense
+                end
+
+                if callback then
+                    callback(false, errorMsg, data)
+                end
             end
         else
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Validation Result", "FAILED - License is invalid\nReason: data.valid = " .. tostring(data.valid))
-            end
-            -- Ungültige Lizenz - aus Preferences entfernen
-            local prefs = getPrefs()
-            prefs.licenseKey = nil
-            prefs.licenseValid = false
-            prefs.licenseStatus = nil
-
-            local errorMsg = data.message or LicenseConfig.MESSAGES.invalidLicense
-            if data.status == LICENSE_STATUS.EXPIRED then
-                errorMsg = LicenseConfig.MESSAGES.expiredLicense
-            end
-
-            if callback then
-                callback(false, errorMsg, data)
-            end
-        end
-        else
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("HTTP Error", "FAILED! No response received")
-            end
             -- Verbindungsfehler
             if callback then
                 callback(false, LicenseConfig.MESSAGES.connectionError)
@@ -216,10 +160,6 @@ end
 
 -- Lizenz aktivieren
 function LicenseManager.activateLicense(licenseKey, callback)
-    if LicenseConfig.DEBUG.enabled then
-        debugMessage("Activate License", "Function called with key: " .. tostring(licenseKey))
-    end
-
     if not licenseKey or licenseKey == "" then
         if callback then
             callback(false, LicenseConfig.MESSAGES.noLicenseKey)
@@ -241,60 +181,48 @@ function LicenseManager.activateLicense(licenseKey, callback)
         local url = LicenseConfig.getProxyUrl("activate", licenseKey)
         local headers = createHeaders()
 
-        if LicenseConfig.DEBUG.enabled then
-            debugMessage("Activate Start", "License Key: " .. tostring(licenseKey) .. "\nURL: " .. tostring(url))
-        end
-
         -- Verwende LrHttp.get direkt ohne pcall
         local response, headers_response = LrHttp.get(url, headers)
 
         if response and response ~= "" then
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Activate HTTP Response", "Success! Response length: " .. string.len(response) .. "\nRaw Response: " .. response)
-            end
-
             local data = parseJsonResponse(response)
 
-        -- Prüfe auf API-Authentifizierungsfehler
-        if data.errorCode == "lmfwc_rest_authentication_error" then
-            -- Bei API-Auth-Fehlern ist meist der Lizenzschlüssel ungültig
-            -- (nicht die API-Konfiguration, da wir eine Response bekommen)
-            if callback then
-                callback(false, LicenseConfig.MESSAGES.invalidLicense)
-            end
-        elseif data.valid == true then
-            -- Aktivierung erfolgreich
-            local prefs = getPrefs()
-            prefs.licenseKey = licenseKey
-            prefs.licenseValid = true
-            prefs.licenseStatus = data.status
-            prefs.activationToken = data.activationToken
-            prefs.lastValidation = os.time()
+            -- Prüfe auf API-Authentifizierungsfehler
+            if data.errorCode == "lmfwc_rest_authentication_error" then
+                -- Bei API-Auth-Fehlern ist meist der Lizenzschlüssel ungültig
+                if callback then
+                    callback(false, LicenseConfig.MESSAGES.invalidLicense)
+                end
+            elseif data.valid == true then
+                -- Aktivierung erfolgreich
+                local prefs = getPrefs()
+                prefs.licenseKey = licenseKey
+                prefs.licenseValid = true
+                prefs.licenseStatus = data.status
+                prefs.activationToken = data.activationToken
+                prefs.lastValidation = os.time()
 
-            if callback then
-                callback(true, LicenseConfig.MESSAGES.activationSuccess, data)
-            end
-        else
-            -- Lizenz ungültig oder andere Fehler
-            local errorMsg = data.message or LicenseConfig.MESSAGES.invalidLicense
+                if callback then
+                    callback(true, LicenseConfig.MESSAGES.activationSuccess, data)
+                end
+            else
+                -- Lizenz ungültig oder andere Fehler
+                local errorMsg = data.message or LicenseConfig.MESSAGES.invalidLicense
 
-            -- Spezifische Fehlermeldungen je nach Fehlercode
-            if data.errorCode then
-                if string.find(data.errorCode, "invalid") or string.find(data.errorCode, "not_found") then
-                    errorMsg = LicenseConfig.MESSAGES.invalidLicense
-                elseif string.find(data.errorCode, "expired") then
-                    errorMsg = LicenseConfig.MESSAGES.expiredLicense
+                -- Spezifische Fehlermeldungen je nach Fehlercode
+                if data.errorCode then
+                    if string.find(data.errorCode, "invalid") or string.find(data.errorCode, "not_found") then
+                        errorMsg = LicenseConfig.MESSAGES.invalidLicense
+                    elseif string.find(data.errorCode, "expired") then
+                        errorMsg = LicenseConfig.MESSAGES.expiredLicense
+                    end
+                end
+
+                if callback then
+                    callback(false, errorMsg, data)
                 end
             end
-
-            if callback then
-                callback(false, errorMsg, data)
-            end
-        end
         else
-            if LicenseConfig.DEBUG.enabled then
-                debugMessage("Activate HTTP Error", "FAILED! No response received")
-            end
             if callback then
                 callback(false, LicenseConfig.MESSAGES.connectionError)
             end
