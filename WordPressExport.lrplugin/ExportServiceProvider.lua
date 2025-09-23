@@ -19,6 +19,7 @@ local LrFunctionContext = import 'LrFunctionContext'
 local LrTasks = import 'LrTasks'
 
 local UploadTask = require 'UploadTask'
+local LicenseManager = require 'LicenseManager'
 
 local exportServiceProvider = {}
 
@@ -30,29 +31,58 @@ local prefs = LrPrefs.prefsForPlugin()
 
 exportServiceProvider.sectionsForTopOfDialog = function(f, propertyTable)
 
-	return {
-		{
+	local sections = {}
+
+	-- Lizenz-Status Warnung (falls nicht lizenziert)
+	if not LicenseManager.isPluginLicensed() then
+		table.insert(sections, {
+			title = "⚠️ Lizenz erforderlich",
+
+			f:column {
+				spacing = f:control_spacing(),
+
+				f:static_text {
+					title = "Dieses Plugin benötigt eine gültige Lizenz für den Export.",
+					font = "<system/bold>",
+					text_color = import('LrColor')(0.8, 0, 0), -- Rot
+					width_in_chars = 60,
+				},
+
+				f:spacer { height = 5 },
+
+				f:static_text {
+					title = "Bitte aktivieren Sie Ihre Lizenz im Plugin-Manager:\nZusatzmodule > Plugin-Manager > WordPress Export",
+					width_in_chars = 60,
+					height_in_lines = 2,
+				},
+
+				f:spacer { height = 10 },
+			}
+		})
+	else
+		-- Nur bei gültiger Lizenz: WordPress Export Einstellungen anzeigen
+		table.insert(sections, {
 			title = "WordPress Einstellungen",
 
 			f:column {
 				spacing = f:control_spacing(),
 
-				-- WordPress URL Feld
-				f:row {
-					f:static_text {
-						title = "WordPress URL:",
-						alignment = 'right',
-						width = LrView.share 'label_width'
-					},
+					-- WordPress URL Feld
+					f:row {
+						f:static_text {
+							title = "WordPress URL:",
+							alignment = 'right',
+							width = LrView.share 'label_width'
+						},
 
-					f:edit_field {
-						bind_to_object = propertyTable,
-						value = LrView.bind 'wordpressUrl',
-						immediate = true,
-						width_in_chars = 35,
-						tooltip = "Die vollständige URL zu Ihrer WordPress-Installation (z.B. https://meineblog.de)"
+						f:edit_field {
+							bind_to_object = propertyTable,
+							value = LrView.bind 'wordpressUrl',
+							immediate = true,
+							width_in_chars = 35,
+							tooltip = "Die vollständige URL zu Ihrer WordPress-Installation (z.B. https://meineblog.de)"
+						},
 					},
-				},
 
 				-- Hilfstext für WordPress URL
 				f:row {
@@ -154,14 +184,39 @@ exportServiceProvider.sectionsForTopOfDialog = function(f, propertyTable)
 
 				f:spacer { height = 15 },
 			},
-		}
-	}
+		})
+	end  -- Ende der Lizenz-Prüfung
+
+	return sections
 end
 
 --------------------------------------------------------------------------------
 -- Export Process
 
 exportServiceProvider.processRenderedPhotos = function(functionContext, exportContext)
+
+	-- Umfassende Lizenz-Validierung vor dem Export
+	if not LicenseManager.isPluginLicensed() then
+		LrDialogs.message(
+			"Plugin nicht lizenziert",
+			"Dieses Plugin benötigt eine gültige Lizenz.\n\nBitte aktivieren Sie Ihre gekaufte Lizenz im Zusatzmodul-Manager > WordPress Export oder erwerben Sie eine Lizenz auf https://dermatz.de.\n\nSollten Sie Hilfe benötigen, kontaktieren Sie bitte den Support per E-Mail unter hello@dermatz.de.\n\nVielen Dank für Ihre Unterstützung!",
+			"critical"
+		)
+		-- Export sofort beenden
+		return
+	end
+
+	-- Zusätzliche Sicherheitsvalidierung
+	local storedLicense = LicenseManager.getStoredLicense()
+	if not storedLicense or not storedLicense.valid then
+		LrDialogs.message(
+			"Lizenzvalidierung fehlgeschlagen",
+			"Die Lizenzvalidierung ist fehlgeschlagen. Bitte aktivieren Sie Ihre Lizenz erneut im Zusatzmodul-Manager.",
+			"critical"
+		)
+		-- Export sofort beenden
+		return
+	end
 
 	LrFunctionContext.callWithContext('WordPressExport', function(context)
 

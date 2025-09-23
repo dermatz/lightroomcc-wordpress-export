@@ -17,9 +17,11 @@ local LrTasks = import 'LrTasks'
 local LrFunctionContext = import 'LrFunctionContext'
 local LrColor = import 'LrColor'
 local LrHttp = import 'LrHttp'
+local LrPrefs = import 'LrPrefs'
 
 local VersionChecker = require 'VersionChecker'
 local DirectVersionCheck = require 'DirectVersionCheck'
+local LicenseManager = require 'LicenseManager'
 
 -- Plugin Info Provider für Lightroom
 local pluginInfoProvider = {}
@@ -45,6 +47,15 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 		propertyTable.availableVersion = "Noch nicht geprüft"
 		propertyTable.hasUpdate = nil
 		propertyTable.isChecking = false
+	end
+
+	-- Lizenz Properties initialisieren
+	if not propertyTable.licenseKey then
+		propertyTable.licenseKey = ""
+		propertyTable.licenseStatus = "Nicht aktiviert"
+		propertyTable.licenseValid = false
+		propertyTable.isValidatingLicense = false
+		propertyTable.licenseMessage = ""
 	end
 
 	-- Update Check Funktion
@@ -91,6 +102,43 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 
 			propertyTable.isChecking = false
 		end)
+	end
+
+	-- Lizenz-Aktivierung Funktion
+	local function activateLicense(licenseKey)
+		if propertyTable.isValidatingLicense then return end
+		if not licenseKey or licenseKey == "" then
+			propertyTable.licenseMessage = "Bitte geben Sie einen Lizenzschlüssel ein."
+			return
+		end
+
+		propertyTable.isValidatingLicense = true
+		propertyTable.licenseStatus = "Wird aktiviert..."
+		propertyTable.licenseMessage = ""
+
+		-- Verwende den LicenseManager für die Aktivierung
+		LicenseManager.activateLicense(licenseKey, function(success, message, data)
+			if success then
+				propertyTable.licenseValid = true
+				propertyTable.licenseStatus = "✓ Aktiviert"
+				propertyTable.licenseMessage = message
+			else
+				propertyTable.licenseValid = false
+				propertyTable.licenseStatus = "✗ Ungültig"
+				propertyTable.licenseMessage = message
+			end
+
+			propertyTable.isValidatingLicense = false
+		end)
+	end
+
+	-- Funktion zum Entfernen der Lizenz
+	local function removeLicense()
+		LicenseManager.clearLicense()
+		propertyTable.licenseKey = ""
+		propertyTable.licenseValid = nil
+		propertyTable.licenseStatus = "Nicht aktiviert"
+		propertyTable.licenseMessage = "Lizenz wurde entfernt"
 	end
 
 	return {
@@ -205,6 +253,149 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 
 				f:spacer { height = 15 },
 
+				-- Lizenzbereich
+				f:group_box {
+					title = "Plugin-Lizenz",
+					fill_horizontal = 1,
+
+					f:column {
+						spacing = f:control_spacing(),
+
+						-- Lizenz Status
+						f:row {
+							f:static_text {
+								title = "Status:",
+								width = 120,
+							},
+
+							f:static_text {
+								bind_to_object = propertyTable,
+								title = LrView.bind 'licenseStatus',
+								font = LrView.bind {
+									key = 'licenseValid',
+									transform = function(valid)
+										if valid == true then
+											return "<system/bold>"
+										else
+											return "<system>"
+										end
+									end
+								},
+								text_color = LrView.bind {
+									key = 'licenseValid',
+									transform = function(valid)
+										if valid == true then
+											return LrColor(0, 0.7, 0)  -- Grün für gültig
+										elseif valid == false then
+											return LrColor(0.8, 0, 0)  -- Rot für ungültig
+										else
+											return LrColor(0.5, 0.5, 0.5)  -- Grau für unbekannt
+										end
+									end
+								},
+								width = 150,
+							},
+						},
+
+						f:spacer { height = 10 },
+
+						-- Lizenzschlüssel Eingabe
+						f:row {
+							f:static_text {
+								title = "Lizenzschlüssel:",
+								width = 120,
+							},
+
+							f:edit_field {
+								bind_to_object = propertyTable,
+								value = LrView.bind 'licenseKey',
+								width_in_chars = 40,
+								enabled = LrView.bind {
+									key = 'isValidatingLicense',
+									transform = function(value)
+										return not value
+									end
+								},
+								tooltip = "Geben Sie hier Ihren Lizenzschlüssel ein"
+							},
+						},
+
+						f:spacer { height = 10 },
+
+						-- Aktivierungs-Button und Status
+						f:row {
+							f:push_button {
+								title = "Lizenz aktivieren",
+								action = function()
+									activateLicense(propertyTable.licenseKey)
+								end,
+								enabled = LrView.bind {
+									keys = { 'isValidatingLicense', 'licenseKey' },
+									operation = 'and',
+									transform = function(value, bind)
+										local isValidating = bind.isValidatingLicense
+										local hasKey = bind.licenseKey and bind.licenseKey ~= ""
+										return not isValidating and hasKey
+									end
+								},
+								tooltip = "Validiert den eingegebenen Lizenzschlüssel"
+							},
+
+							f:spacer { width = 10 },
+
+							f:push_button {
+								title = "Lizenz entfernen",
+								action = function()
+									removeLicense()
+								end,
+								enabled = LrView.bind {
+									keys = { 'isValidatingLicense', 'licenseValid' },
+									operation = 'and',
+									transform = function(value, bind)
+										local isValidating = bind.isValidatingLicense
+										local hasValidLicense = bind.licenseValid == true
+										return not isValidating and hasValidLicense
+									end
+								},
+								tooltip = "Entfernt die aktuelle Lizenz aus dem Plugin"
+							},
+
+							f:spacer { width = 20 },
+
+							f:static_text {
+								bind_to_object = propertyTable,
+								title = LrView.bind 'licenseMessage',
+								width_in_chars = 50,
+								height_in_lines = 2,
+								text_color = LrView.bind {
+									key = 'licenseValid',
+									transform = function(valid)
+										if valid == true then
+											return LrColor(0, 0.7, 0)  -- Grün für Erfolg
+										elseif valid == false then
+											return LrColor(0.8, 0, 0)  -- Rot für Fehler
+										else
+											return LrColor(0.5, 0.5, 0.5)  -- Grau für neutral
+										end
+									end
+								},
+							},
+						},
+
+						f:spacer { height = 10 },
+
+						-- Lizenz-Hinweise
+						f:static_text {
+							title = "Hinweis: Eine gültige Lizenz ist erforderlich, um das Plugin zu verwenden. Sie können eine Lizenz auf unserer Website erwerben.",
+							width_in_chars = 60,
+							height_in_lines = 2,
+							font = "<system/small>",
+						},
+					},
+				},
+
+				f:spacer { height = 15 },
+
 				-- Plugin Beschreibung
 				f:group_box {
 					title = "Über dieses Plugin",
@@ -289,6 +480,22 @@ pluginInfoProvider.startDialog = function(propertyTable)
 	propertyTable:addObserver('availableVersion', function() end)
 	propertyTable:addObserver('hasUpdate', function() end)
 	propertyTable:addObserver('isChecking', function() end)
+
+	-- Properties für die Lizenz-Verwaltung hinzufügen
+	propertyTable:addObserver('licenseKey', function() end)
+	propertyTable:addObserver('licenseStatus', function() end)
+	propertyTable:addObserver('licenseValid', function() end)
+	propertyTable:addObserver('isValidatingLicense', function() end)
+	propertyTable:addObserver('licenseMessage', function() end)
+
+	-- Gespeicherte Lizenz aus Preferences laden
+	local storedLicense = LicenseManager.getStoredLicense()
+	if storedLicense.valid and storedLicense.licenseKey then
+		propertyTable.licenseKey = storedLicense.licenseKey
+		propertyTable.licenseValid = storedLicense.valid
+		propertyTable.licenseStatus = "✓ Aktiviert"
+		propertyTable.licenseMessage = "Lizenz aus Einstellungen geladen (Status: " .. (storedLicense.status or "unbekannt") .. ")"
+	end
 end
 
 return pluginInfoProvider
