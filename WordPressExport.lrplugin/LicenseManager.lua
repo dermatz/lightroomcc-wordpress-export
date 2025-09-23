@@ -143,6 +143,8 @@ function LicenseManager.validateLicense(licenseKey, callback)
                 local errorMsg = data.message or LicenseConfig.MESSAGES.invalidLicense
                 if data.status == LICENSE_STATUS.EXPIRED then
                     errorMsg = LicenseConfig.MESSAGES.expiredLicense
+                elseif data.status == LICENSE_STATUS.DISABLED then
+                    errorMsg = LicenseConfig.MESSAGES.disabledLicense
                 end
 
                 if callback then
@@ -209,7 +211,14 @@ function LicenseManager.activateLicense(licenseKey, callback)
                 -- Lizenz ungültig oder andere Fehler
                 local errorMsg = data.message or LicenseConfig.MESSAGES.invalidLicense
 
-                -- Spezifische Fehlermeldungen je nach Fehlercode
+                -- Spezifische Fehlermeldungen je nach Status
+                if data.status == LICENSE_STATUS.EXPIRED then
+                    errorMsg = LicenseConfig.MESSAGES.expiredLicense
+                elseif data.status == LICENSE_STATUS.DISABLED then
+                    errorMsg = LicenseConfig.MESSAGES.disabledLicense
+                end
+
+                -- Spezifische Fehlermeldungen je nach Fehlercode (Fallback)
                 if data.errorCode then
                     if string.find(data.errorCode, "invalid") or string.find(data.errorCode, "not_found") then
                         errorMsg = LicenseConfig.MESSAGES.invalidLicense
@@ -256,6 +265,180 @@ end
 function LicenseManager.isPluginLicensed()
     local prefs = getPrefs()
     return prefs.licenseValid == true and prefs.licenseKey ~= nil
+end
+
+-- Prüfen ob die gespeicherte Lizenz-Validierung noch gültig ist
+function LicenseManager.isLicenseValidationCacheValid()
+    local prefs = getPrefs()
+    local lastValidation = prefs.lastValidation
+
+    if not lastValidation then
+        return false
+    end
+
+    local currentTime = os.time()
+    local timeDifference = currentTime - lastValidation
+    local cacheValidityDuration = LicenseConfig.LICENSE.cacheValidityDuration or (24 * 60 * 60)
+
+    return timeDifference < cacheValidityDuration
+end
+
+-- Automatische Lizenz-Revalidierung beim Plugin-Start
+function LicenseManager.performStartupLicenseCheck(callback)
+    local prefs = getPrefs()
+
+    -- Keine Lizenz vorhanden
+    if not prefs.licenseKey or prefs.licenseValid ~= true then
+        if callback then
+            callback(false, "Keine gültige Lizenz gespeichert")
+        end
+        return
+    end
+
+    -- Cache noch gültig - keine Revalidierung nötig
+    if LicenseManager.isLicenseValidationCacheValid() then
+        if callback then
+            callback(true, "Lizenz aus Cache gültig (Status: " .. (prefs.licenseStatus or "unbekannt") .. ")")
+        end
+        return
+    end
+
+    -- Cache abgelaufen - Online-Revalidierung durchführen
+    LicenseManager.validateLicense(prefs.licenseKey, function(success, message, data)
+        if success then
+            if callback then
+                callback(true, "Lizenz online revalidiert: " .. message)
+            end
+        else
+            -- Bei fehlgeschlagener Revalidierung: Lizenz als ungültig markieren
+            prefs.licenseValid = false
+            prefs.licenseStatus = nil
+
+            if callback then
+                callback(false, "Lizenz-Revalidierung fehlgeschlagen: " .. message)
+            end
+        end
+    end)
+end
+
+-- Erweiterte Lizenz-Status-Prüfung (prüft auch auf Status-Änderungen)
+function LicenseManager.checkLicenseStatusChange(callback)
+    local prefs = getPrefs()
+
+    if not prefs.licenseKey or prefs.licenseValid ~= true then
+        if callback then
+            callback(false, "Keine gültige Lizenz gespeichert", nil)
+        end
+        return
+    end
+
+    -- Immer online prüfen um Status-Änderungen zu erkennen
+    LicenseManager.validateLicense(prefs.licenseKey, function(success, message, data)
+        local statusChanged = false
+        local oldStatus = prefs.licenseStatus
+        local newStatus = data and data.status
+
+        if oldStatus ~= newStatus then
+            statusChanged = true
+        end
+
+        if callback then
+            callback(success, message, {
+                statusChanged = statusChanged,
+                oldStatus = oldStatus,
+                newStatus = newStatus,
+                data = data
+            })
+        end
+    end)
+end
+
+-- Stille Startup-Validierung (ohne UI-Feedback)
+function LicenseManager.performSilentStartupCheck()
+    LicenseManager.performStartupLicenseCheck(nil)
+end
+
+-- Intelligente Startup-Validierung mit Status-Change-Detection
+function LicenseManager.performIntelligentStartupCheck(callback)
+    local prefs = getPrefs()
+
+    -- Keine Lizenz vorhanden
+    if not prefs.licenseKey or prefs.licenseValid ~= true then
+        if callback then
+            callback(false, "Keine gültige Lizenz gespeichert")
+        end
+        return
+    end
+
+    -- Wenn Cache noch gültig ist, trotzdem gelegentlich (bei jedem 10. Start) online prüfen
+    -- um Status-Änderungen zu erkennen
+    local shouldForceCheck = false
+    local startupCount = prefs.startupCount or 0
+    startupCount = startupCount + 1
+    prefs.startupCount = startupCount
+
+    -- Jeder 10. Start oder bei kritischen Status
+    if (startupCount % 10 == 0) or (prefs.licenseStatus == "disabled") then
+        shouldForceCheck = true
+    end
+
+    if LicenseManager.isLicenseValidationCacheValid() and not shouldForceCheck then
+        if callback then
+            callback(true, "Lizenz aus Cache gültig (Status: " .. (prefs.licenseStatus or "unbekannt") .. ")")
+        end
+        return
+    end
+
+    -- Online-Validierung durchführen
+    LicenseManager.checkLicenseStatusChange(function(success, message, statusInfo)
+        if success then
+            if statusInfo and statusInfo.statusChanged then
+                local changeMsg = "Status geändert: " .. (statusInfo.oldStatus or "unbekannt") .. " → " .. (statusInfo.newStatus or "unbekannt")
+                if callback then
+                    callback(true, "Lizenz revalidiert. " .. changeMsg)
+                end
+            else
+                if callback then
+                    callback(true, "Lizenz online bestätigt: " .. message)
+                end
+            end
+        else
+            -- Bei Fehler: Lizenz als ungültig markieren
+            prefs.licenseValid = false
+            prefs.licenseStatus = nil
+
+            if callback then
+                callback(false, "Lizenz-Status geändert - ungültig: " .. message)
+            end
+        end
+    end)
+end
+
+-- Cache-Status für Debugging anzeigen
+function LicenseManager.getCacheStatus()
+    local prefs = getPrefs()
+    local currentTime = os.time()
+
+    return {
+        licenseKey = prefs.licenseKey,
+        licenseValid = prefs.licenseValid,
+        licenseStatus = prefs.licenseStatus,
+        lastValidation = prefs.lastValidation,
+        lastValidationDate = prefs.lastValidation and os.date("%Y-%m-%d %H:%M:%S", prefs.lastValidation) or "Nie",
+        currentTime = currentTime,
+        currentTimeDate = os.date("%Y-%m-%d %H:%M:%S", currentTime),
+        timeSinceLastValidation = prefs.lastValidation and (currentTime - prefs.lastValidation) or nil,
+        cacheValidityDuration = LicenseConfig.LICENSE.cacheValidityDuration,
+        isCacheValid = LicenseManager.isLicenseValidationCacheValid(),
+        startupCount = prefs.startupCount or 0
+    }
+end
+
+-- Cache forciert invalidieren (für sofortige Revalidierung)
+function LicenseManager.forceCacheInvalidation()
+    local prefs = getPrefs()
+    prefs.lastValidation = 0  -- Cache als abgelaufen markieren
+    prefs.startupCount = (prefs.startupCount or 0) + 10  -- Forciert Online-Check
 end
 
 -- Aktuelle Proxy-Konfiguration abrufen

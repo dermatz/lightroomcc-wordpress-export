@@ -1,24 +1,8 @@
---[[----------------------------------------------------------------------------
-
-LicenseConfig.lua
-Konfiguration für das Lizenzierungssystem
-
---------------------------------------------------------------------------------
-
-Zentrale Konfigurationsdatei für die sichere Lizenz-Validierung über Middleware.
-Die API-Keys sind sicher auf dem Server gespeichert, nicht im Client-Plugin.
-
-SICHERHEIT: Keine API-Keys mehr in dieser Datei - alle sensiblen Daten
-sind sicher in der Middleware unter https://dermatz.de/middleware/license-proxy.php
-
-------------------------------------------------------------------------------]]
-
 local LicenseConfig = {}
 
--- Middleware-Proxy Konfiguration
--- Sichere Lizenz-Validierung über Proxy-Server (keine API-Keys im Client)
 LicenseConfig.API = {
-    -- Proxy-URL für Lizenz-Validierung (API-Keys sind sicher auf dem Server)
+
+    -- Middleware Proxy URL
     proxyUrl = "https://dermatz.de/middleware/license-proxy.php",
 
     -- HTTP-Timeout in Sekunden
@@ -28,7 +12,6 @@ LicenseConfig.API = {
     maxRetries = 3
 }
 
--- Plugin-Lizenz Konfiguration
 LicenseConfig.LICENSE = {
     -- Produkt-ID in WooCommerce (optional für erweiterte Validierung)
     productId = nil,
@@ -54,6 +37,7 @@ LicenseConfig.MESSAGES = {
     noLicenseKey = "Bitte geben Sie einen Lizenzschlüssel ein.",
     invalidLicense = "Der eingegebene Lizenzschlüssel ist ungültig.",
     expiredLicense = "Ihre Lizenz ist abgelaufen. Bitte erneuern Sie Ihre Lizenz.",
+    disabledLicense = "Ihr Lizenzschlüssel wurde deaktiviert. Bitte kontaktieren Sie den Support.",
     connectionError = "Verbindung zum Lizenzserver fehlgeschlagen. Bitte überprüfen Sie Ihre Internetverbindung.",
     configurationError = "API-Konfiguration ist unvollständig. Bitte kontaktieren Sie den Support.",
 

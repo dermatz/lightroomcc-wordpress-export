@@ -316,6 +316,9 @@ end
 
 exportServiceProvider.startDialog = function(propertyTable)
 
+	-- Automatische intelligente Lizenz-Revalidierung beim Export-Dialog Start
+	LicenseManager.performIntelligentStartupCheck(nil)
+
 	-- Properties explizit initialisieren
 	propertyTable:addObserver('wordpressUrl', function()
 		-- Sofort speichern bei Änderung

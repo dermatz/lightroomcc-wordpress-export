@@ -495,6 +495,23 @@ pluginInfoProvider.startDialog = function(propertyTable)
 		propertyTable.licenseValid = storedLicense.valid
 		propertyTable.licenseStatus = "✓ Aktiviert"
 		propertyTable.licenseMessage = "Lizenz aus Einstellungen geladen (Status: " .. (storedLicense.status or "unbekannt") .. ")"
+
+		-- Automatische intelligente Lizenz-Revalidierung beim Plugin-Manager Start
+		propertyTable.licenseMessage = "Lizenz wird überprüft..."
+		LicenseManager.performIntelligentStartupCheck(function(success, message)
+			if success then
+				propertyTable.licenseStatus = "✓ Aktiviert"
+				propertyTable.licenseValid = true
+				propertyTable.licenseMessage = message
+			else
+				propertyTable.licenseStatus = "✗ Ungültig"
+				propertyTable.licenseValid = false
+				propertyTable.licenseMessage = message
+			end
+		end)
+	else
+		-- Auch bei fehlender Lizenz eine stille Startup-Prüfung durchführen (falls Daten inkonsistent sind)
+		LicenseManager.performSilentStartupCheck()
 	end
 end
 
