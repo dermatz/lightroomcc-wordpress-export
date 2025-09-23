@@ -5,24 +5,21 @@ Konfiguration für das Lizenzierungssystem
 
 --------------------------------------------------------------------------------
 
-Zentrale Konfigurationsdatei für die WooCommerce License Manager API.
-Hier können die API-Endpunkte und Authentifizierungsdaten angepasst werden.
+Zentrale Konfigurationsdatei für die sichere Lizenz-Validierung über Middleware.
+Die API-Keys sind sicher auf dem Server gespeichert, nicht im Client-Plugin.
 
-WICHTIG: Passen Sie die Werte an Ihre WooCommerce Installation an!
+SICHERHEIT: Keine API-Keys mehr in dieser Datei - alle sensiblen Daten
+sind sicher in der Middleware unter https://dermatz.de/middleware/license-proxy.php
 
 ------------------------------------------------------------------------------]]
 
 local LicenseConfig = {}
 
--- WooCommerce REST API Konfiguration
--- Diese Konfiguration ist bereits für das Plugin eingerichtet
+-- Middleware-Proxy Konfiguration
+-- Sichere Lizenz-Validierung über Proxy-Server (keine API-Keys im Client)
 LicenseConfig.API = {
-    -- Basis-URL für die Lizenz-API
-    baseUrl = "https://dermatz.de/wp-json/lmfwc/v2",
-
-    -- WooCommerce REST API Schlüssel (vorkonfiguriert für Plugin-Lizenzierung)
-    consumerKey = "ck_a43a3b182ce64f5bf42d122b3c254d5fe2d4a586",
-    consumerSecret = "cs_cba0648c5c09122578635b481e3460cd8ab088c9",
+    -- Proxy-URL für Lizenz-Validierung (API-Keys sind sicher auf dem Server)
+    proxyUrl = "https://dermatz.de/middleware/license-proxy.php",
 
     -- HTTP-Timeout in Sekunden
     timeout = 30,
@@ -75,10 +72,10 @@ LicenseConfig.MESSAGES = {
 -- Entwickler-Optionen
 LicenseConfig.DEBUG = {
     -- Aktiviert erweiterte Protokollierung
-    enabled = false,
+    enabled = true,
 
     -- Protokolliert HTTP-Anfragen und -Antworten
-    logHttpRequests = false,
+    logHttpRequests = true,
 
     -- Verwendet Test-Lizenzschlüssel für Entwicklung
     useTestLicense = false,
@@ -89,49 +86,37 @@ LicenseConfig.DEBUG = {
 function LicenseConfig.validateConfig()
     local errors = {}
 
-    if not LicenseConfig.API.baseUrl or LicenseConfig.API.baseUrl == "" then
-        table.insert(errors, "Basis-URL der API ist nicht konfiguriert")
+    if not LicenseConfig.API.proxyUrl or LicenseConfig.API.proxyUrl == "" then
+        table.insert(errors, "Proxy-URL ist nicht konfiguriert")
     end
 
-    if not LicenseConfig.API.consumerKey or LicenseConfig.API.consumerKey == "" then
-        table.insert(errors, "Consumer Key ist nicht konfiguriert")
-    end
-
-    if not LicenseConfig.API.consumerSecret or LicenseConfig.API.consumerSecret == "" then
-        table.insert(errors, "Consumer Secret ist nicht konfiguriert")
+    -- Prüfe ob URL das richtige Format hat
+    if LicenseConfig.API.proxyUrl and not string.match(LicenseConfig.API.proxyUrl, "^https?://") then
+        table.insert(errors, "Proxy-URL muss mit http:// oder https:// beginnen")
     end
 
     return #errors == 0, errors
 end
 
--- Methode zum Abrufen der konfigurierten API-URL für einen bestimmten Endpunkt
-function LicenseConfig.getApiUrl(endpoint)
-    return LicenseConfig.API.baseUrl .. "/" .. endpoint
+-- Methode zum Erstellen der Proxy-URL für eine bestimmte Aktion
+function LicenseConfig.getProxyUrl(action, licenseKey)
+    if not LicenseConfig.API.proxyUrl then
+        return nil
+    end
+
+    local url = LicenseConfig.API.proxyUrl .. "?action=" .. action
+    if licenseKey and licenseKey ~= "" then
+        url = url .. "&license_key=" .. licenseKey
+    end
+
+    return url
 end
 
 
--- Lua base64-Encode Funktion
-local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-function base64Encode(data)
-    return ((data:gsub('.', function(x)
-        local r,b='',x:byte()
-        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
-        return r
-    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
-        if #x < 6 then return '' end
-        local c=0
-        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
-        return b:sub(c+1,c+1)
-    end)..({ '', '==', '=' })[#data%3+1])
-end
-
-function LicenseConfig.getAuthHeaders()
-    local credentials = LicenseConfig.API.consumerKey .. ":" .. LicenseConfig.API.consumerSecret
-    local encoded = base64Encode(credentials)
-
+-- HTTP-Header für Proxy-Anfragen
+function LicenseConfig.getProxyHeaders()
     return {
-        { field = "Authorization", value = "Basic " .. encoded },
-        { field = "User-Agent", value = "Lightroom-WordPress-Plugin/1.0" },
+        { field = "User-Agent", value = "Lightroom-Plugin-Proxy/1.0" },
         { field = "Content-Type", value = "application/json" },
         { field = "Accept", value = "application/json" }
     }
