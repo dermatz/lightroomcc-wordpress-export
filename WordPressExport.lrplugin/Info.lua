@@ -25,7 +25,7 @@ return {
 
 	LrMetadataProvider = 'MetadataDefinition.lua',
 
-	LrPluginInfoUrl = "https://github.com/dermatz/lightroomcc-wordpress-export",
+	LrPluginInfoUrl = "https://dermatz.de/produkt/lightroom-classic-to-wordpress-exporter",
 
 	-- Plugin Manager Integration
 	LrPluginInfoProvider = 'PluginManager.lua',

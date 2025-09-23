@@ -19,8 +19,6 @@ local LrColor = import 'LrColor'
 local LrHttp = import 'LrHttp'
 local LrPrefs = import 'LrPrefs'
 
-local VersionChecker = require 'VersionChecker'
-local DirectVersionCheck = require 'DirectVersionCheck'
 local LicenseManager = require 'LicenseManager'
 
 -- Plugin Info Provider für Lightroom
@@ -44,9 +42,6 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 	-- Properties initialisieren falls nicht vorhanden
 	if not propertyTable.currentVersion then
 		propertyTable.currentVersion = getCurrentVersionString(info.VERSION)
-		propertyTable.availableVersion = "Noch nicht geprüft"
-		propertyTable.hasUpdate = nil
-		propertyTable.isChecking = false
 	end
 
 	-- Lizenz Properties initialisieren
@@ -56,52 +51,6 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 		propertyTable.licenseValid = false
 		propertyTable.isValidatingLicense = false
 		propertyTable.licenseMessage = ""
-	end
-
-	-- Update Check Funktion
-	local function checkForUpdates()
-		if propertyTable.isChecking then return end
-
-		propertyTable.isChecking = true
-		propertyTable.availableVersion = "Wird geprüft..."
-		propertyTable.hasUpdate = nil
-
-		-- Exakt die gleiche Logik wie im funktionierenden DirectVersionCheck
-		LrTasks.startAsyncTask(function()
-			local LrHttp = import 'LrHttp'
-
-			-- Direkte GitHub API Abfrage (ohne pcall da DirectVersionCheck auch ohne pcall funktioniert)
-			local url = "https://api.github.com/repos/dermatz/lightroomcc-wordpress-export/releases/latest"
-
-			local response, headers = LrHttp.get(url, {
-				{ field = "User-Agent", value = "Lightroom-Plugin/1.0" }
-			})
-
-			if response then
-				-- Tag-Name extrahieren
-				local tagName = string.match(response, '"tag_name"%s*:%s*"([^"]+)"')
-				if tagName then
-					propertyTable.currentVersion = getCurrentVersionString(info.VERSION)
-					propertyTable.availableVersion = tagName
-
-					-- Version vergleichen (einfach)
-					local currentVer = getCurrentVersionString(info.VERSION)
-					if tagName ~= currentVer then
-						propertyTable.hasUpdate = true
-					else
-						propertyTable.hasUpdate = false
-					end
-				else
-					propertyTable.availableVersion = "Parse-Fehler"
-					propertyTable.hasUpdate = nil
-				end
-			else
-				propertyTable.availableVersion = "Keine Response"
-				propertyTable.hasUpdate = nil
-			end
-
-			propertyTable.isChecking = false
-		end)
 	end
 
 	-- Lizenz-Aktivierung Funktion
@@ -156,102 +105,49 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 					},
 				},
 
-				f:spacer { height = 10 },
-
-				-- Versionsbereich
+				-- Plugin Beschreibung
 				f:group_box {
-					title = "Version & Updates",
+					title = "Über dieses Plugin",
 					fill_horizontal = 1,
 
 					f:column {
 						spacing = f:control_spacing(),
 
-						-- Aktuelle Version
+						-- Plugin Banner-Bild
 						f:row {
-							f:static_text {
-								title = "Installierte Version:",
-								width = 150,
-							},
-
-							f:static_text {
-								bind_to_object = propertyTable,
-								title = LrView.bind 'currentVersion',
-								font = "<system/bold>",
-								width = 100,
+							f:picture {
+								value = _PLUGIN.path .. "/assets/plugin-banner.jpg",
+								width = 700,
+								height = 190,
+								frame_width = 0,
+								frame_color = LrColor(0.7, 0.7, 0.7),
 							},
 						},
 
-						-- Verfügbare Version
-						f:row {
-							f:static_text {
-								title = "Verfügbare Version:",
-								width = 150,
-							},
-
-							f:static_text {
-								bind_to_object = propertyTable,
-								title = LrView.bind 'availableVersion',
-								font = LrView.bind {
-									key = 'hasUpdate',
-									transform = function(hasUpdate)
-										if hasUpdate == true then
-											return "<system/bold>"  -- Bold wenn Update verfügbar
-										else
-											return "<system>"       -- Normal
-										end
-									end
-								},
-								width = 100,
-							},
-
-							f:static_text {
-								bind_to_object = propertyTable,
-								title = LrView.bind {
-									key = 'hasUpdate',
-									transform = function(hasUpdate)
-										if hasUpdate == true then
-											return " 🔄 Update verfügbar!"  -- Indikator für Update
-										else
-											return ""  -- Nichts
-										end
-									end
-								},
-								font = "<system/bold>",
-								width = 150,
-							},
+						f:static_text {
+							title = "Features:",
+							font = "<system/bold>",
 						},
 
-						f:spacer { height = 15 },
+						f:static_text {
+							title = "Ermöglicht den direkten Upload von Fotos aus Lightroom Classic in die WordPress Mediathek über die WordPress REST API.",
+							width_in_chars = 80,
+							height_in_lines = 1,
+						},
 
-						-- Update Check Button
-						f:row {
-							f:push_button {
-								title = "Nach Updates suchen",
-								action = checkForUpdates,
-								enabled = LrView.bind {
-									key = 'isChecking',
-									transform = function(value)
-										return not value
-									end
-								},
-								tooltip = "Überprüft auf GitHub nach neuen Plugin-Versionen"
-							},
+						f:spacer { height = 1 },
 
-							f:spacer { width = 20 },
 
-							-- GitHub Button
-							f:push_button {
-								title = "GitHub Repository",
-								action = function()
-									LrHttp.openUrlInBrowser("https://github.com/dermatz/lightroomcc-wordpress-export")
-								end,
-								tooltip = "Öffnet die Plugin-Seite auf GitHub"
-							},
+
+						f:static_text {
+							title = "• Direkter Upload in WordPress Mediathek\n• Bulk Upload (mehrere Dateien gleichzeitig)\n• Unterstützung für Application Passwords\n• Automatische Metadaten-Übertragung\n• Benutzerfreundliche Export-Konfiguration",
+							width_in_chars = 60,
+							height_in_lines = 4,
 						},
 					},
 				},
 
-				f:spacer { height = 15 },
+				f:spacer { height = 2 },
 
 				-- Lizenzbereich
 				f:group_box {
@@ -297,7 +193,7 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 							},
 						},
 
-						f:spacer { height = 10 },
+						f:spacer { height = 1 },
 
 						-- Lizenzschlüssel Eingabe
 						f:row {
@@ -320,7 +216,7 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 							},
 						},
 
-						f:spacer { height = 10 },
+						f:spacer { height = 1 },
 
 						-- Aktivierungs-Button und Status
 						f:row {
@@ -341,10 +237,20 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 								tooltip = "Validiert den eingegebenen Lizenzschlüssel"
 							},
 
-							f:spacer { width = 10 },
+							f:spacer { width = 2 },
 
 							f:push_button {
-								title = "Lizenz entfernen",
+								title = "Lizenz kaufen",
+								action = function()
+									LrHttp.openUrlInBrowser("https://dermatz.de/produkt/lightroom-classic-to-wordpress-exporter")
+								end,
+								tooltip = "Produkt-Website öffnen"
+							},
+
+							f:spacer { width = 2 },
+
+							f:push_button {
+								title = "Zurücksetzen",
 								action = function()
 									removeLicense()
 								end,
@@ -382,12 +288,12 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 							},
 						},
 
-						f:spacer { height = 10 },
+						f:spacer { height = 1 },
 
 						-- Lizenz-Hinweise
 						f:static_text {
-							title = "Hinweis: Eine gültige Lizenz ist erforderlich, um das Plugin zu verwenden. Sie können eine Lizenz auf unserer Website erwerben.",
-							width_in_chars = 60,
+							title = "Hinweis: Eine gültige Lizenz ist erforderlich, um das Plugin zu verwenden. Sie können eine Lizenz auf unserer Website https://dermatz.de erwerben.",
+							width_in_chars = 44,
 							height_in_lines = 2,
 							font = "<system/small>",
 						},
@@ -396,40 +302,9 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 
 				f:spacer { height = 15 },
 
-				-- Plugin Beschreibung
-				f:group_box {
-					title = "Über dieses Plugin",
-					fill_horizontal = 1,
-
-					f:column {
-						spacing = f:control_spacing(),
-
-						f:static_text {
-							title = "Ermöglicht den direkten Upload von Fotos aus Lightroom Classic in die WordPress Mediathek über die WordPress REST API.",
-							width_in_chars = 60,
-							height_in_lines = 2,
-						},
-
-						f:spacer { height = 10 },
-
-						f:static_text {
-							title = "Features:",
-							font = "<system/bold>",
-						},
-
-						f:static_text {
-							title = "• Direkter Upload in WordPress Mediathek\n• Unterstützung für Application Passwords\n• Automatische Metadaten-Übertragung\n• Benutzerfreundliche Export-Konfiguration",
-							width_in_chars = 60,
-							height_in_lines = 4,
-						},
-					},
-				},
-
-				f:spacer { height = 15 },
-
 				-- Support Informationen
 				f:group_box {
-					title = "Support & Hilfe",
+					title = "Service und Hilfe",
 					fill_horizontal = 1,
 
 					f:column {
@@ -442,14 +317,14 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 
 						f:row {
 							f:push_button {
-								title = "Issues melden",
+								title = "Fehler melden",
 								action = function()
 									LrHttp.openUrlInBrowser("https://github.com/dermatz/lightroomcc-wordpress-export/issues")
 								end,
 								tooltip = "Problem melden oder Hilfe suchen"
 							},
 
-							f:spacer { width = 20 },
+							f:spacer { width = 2 },
 
 							f:push_button {
 								title = "Dokumentation",
@@ -458,12 +333,22 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 								end,
 								tooltip = "Plugin-Dokumentation öffnen"
 							},
+
+							f:spacer { width = 2 },
+
+							f:push_button {
+								title = "Lizenz kaufen",
+								action = function()
+									LrHttp.openUrlInBrowser("https://dermatz.de/produkt/lightroom-classic-to-wordpress-exporter")
+								end,
+								tooltip = "Produkt-Website öffnen"
+							},
 						},
 
-						f:spacer { height = 10 },
+						f:spacer { height = 2 },
 
 						f:static_text {
-							title = "Entwickler: Mathias Elle | dermatz | Lizenz: MIT",
+							title = "Entwickler: Mathias Elle | Support: hello@dermatz.de",
 							font = "<system/small>",
 						},
 					},
@@ -475,12 +360,6 @@ end
 
 -- Initialisierung der Properties
 pluginInfoProvider.startDialog = function(propertyTable)
-	-- Properties für die Versionsüberprüfung hinzufügen
-	propertyTable:addObserver('currentVersion', function() end)
-	propertyTable:addObserver('availableVersion', function() end)
-	propertyTable:addObserver('hasUpdate', function() end)
-	propertyTable:addObserver('isChecking', function() end)
-
 	-- Properties für die Lizenz-Verwaltung hinzufügen
 	propertyTable:addObserver('licenseKey', function() end)
 	propertyTable:addObserver('licenseStatus', function() end)
