@@ -28,16 +28,17 @@ local function getLatestGitHubVersion(callback)
 		local response, headers = LrHttp.get(url)
 
 		if response then
-			-- Extrahiere tag_name aus der JSON-Antwort mit string matching
+			-- Extrahiere tag_name und zipball_url aus der JSON-Antwort
 			local tag_name = response:match('"tag_name"%s*:%s*"([^"]+)"')
+			local zipball_url = response:match('"zipball_url"%s*:%s*"([^"]+)"')
 			if tag_name then
 				local latestVersion = tag_name:gsub("^v", "")  -- Entferne 'v' Prefix falls vorhanden
-				callback(latestVersion)
+				callback(latestVersion, zipball_url)
 			else
-				callback(nil, "Fehler beim Parsen der GitHub-Antwort")
+				callback(nil, nil, "Fehler beim Parsen der GitHub-Antwort")
 			end
 		else
-			callback(nil, "Netzwerkfehler beim Abrufen der Version")
+			callback(nil, nil, "Netzwerkfehler beim Abrufen der Version")
 		end
 	end)
 end
@@ -102,6 +103,7 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 		propertyTable.latestVersion = "Wird geladen..."
 		propertyTable.updateAvailable = false
 		propertyTable.isCheckingVersion = false
+		propertyTable.downloadUrl = ""
 	end
 
 	-- Lizenz-Aktivierung Funktion
@@ -273,13 +275,15 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 								action = function()
 									propertyTable.isCheckingVersion = true
 									propertyTable.latestVersion = "Wird geladen..."
-									getLatestGitHubVersion(function(latest, error)
+									getLatestGitHubVersion(function(latest, downloadUrl, error)
 										if latest then
 											propertyTable.latestVersion = latest
+											propertyTable.downloadUrl = downloadUrl or ""
 											local installed = propertyTable.currentVersion
 											propertyTable.updateAvailable = compareVersions(installed, latest)
 										else
 											propertyTable.latestVersion = "Fehler: " .. (error or "Unbekannt")
+											propertyTable.downloadUrl = ""
 											propertyTable.updateAvailable = false
 										end
 										propertyTable.isCheckingVersion = false
@@ -291,6 +295,18 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 										return not checking
 									end
 								},
+							},
+
+							f:spacer { width = 2 },
+
+							f:push_button {
+								title = "Download Update",
+								action = function()
+									if propertyTable.downloadUrl and propertyTable.downloadUrl ~= "" then
+										LrHttp.openUrlInBrowser(propertyTable.downloadUrl)
+									end
+								end,
+								enabled = LrView.bind 'updateAvailable',
 							},
 
 							f:spacer { width = 2 },
@@ -529,6 +545,7 @@ pluginInfoProvider.startDialog = function(propertyTable)
 	propertyTable:addObserver('latestVersion', function() end)
 	propertyTable:addObserver('updateAvailable', function() end)
 	propertyTable:addObserver('isCheckingVersion', function() end)
+	propertyTable:addObserver('downloadUrl', function() end)
 
 	-- Gespeicherte Lizenz aus Preferences laden
 	local storedLicense = LicenseManager.getStoredLicense()
@@ -557,13 +574,15 @@ pluginInfoProvider.startDialog = function(propertyTable)
 	end
 
 	-- Versionsprüfung starten
-	getLatestGitHubVersion(function(latest, error)
+	getLatestGitHubVersion(function(latest, downloadUrl, error)
 		if latest then
 			propertyTable.latestVersion = latest
+			propertyTable.downloadUrl = downloadUrl or ""
 			local installed = propertyTable.currentVersion
 			propertyTable.updateAvailable = compareVersions(installed, latest)
 		else
 			propertyTable.latestVersion = "Fehler: " .. (error or "Unbekannt")
+			propertyTable.downloadUrl = ""
 			propertyTable.updateAvailable = false
 		end
 	end)
