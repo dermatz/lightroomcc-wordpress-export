@@ -24,11 +24,11 @@ local LicenseManager = require 'LicenseManager'
 -- Funktion zum Abrufen der neuesten Version von GitHub
 local function getLatestGitHubVersion(callback)
 	LrTasks.startAsyncTask(function()
-		local url = "https://api.github.com/repos/dermatz/lightroomcc-wordpress-export/releases/latest"
+		local url = "https://api.github.com/repos/dermatz/lightroomcc-wordpress-export/releases"
 		local response, headers = LrHttp.get(url)
 
 		if response then
-			-- Extrahiere tag_name und zipball_url aus der JSON-Antwort
+			-- Finde die erste (neueste) Release in der Liste
 			local tag_name = response:match('"tag_name"%s*:%s*"([^"]+)"')
 			local zipball_url = response:match('"zipball_url"%s*:%s*"([^"]+)"')
 			if tag_name then
