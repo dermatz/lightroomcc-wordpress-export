@@ -21,6 +21,50 @@ local LrPrefs = import 'LrPrefs'
 
 local LicenseManager = require 'LicenseManager'
 
+-- Funktion zum Abrufen der neuesten Version von GitHub
+local function getLatestGitHubVersion(callback)
+	LrTasks.startAsyncTask(function()
+		local url = "https://api.github.com/repos/dermatz/lightroomcc-wordpress-export/releases/latest"
+		local response, headers = LrHttp.get(url)
+
+		if response then
+			-- Extrahiere tag_name aus der JSON-Antwort mit string matching
+			local tag_name = response:match('"tag_name"%s*:%s*"([^"]+)"')
+			if tag_name then
+				local latestVersion = tag_name:gsub("^v", "")  -- Entferne 'v' Prefix falls vorhanden
+				callback(latestVersion)
+			else
+				callback(nil, "Fehler beim Parsen der GitHub-Antwort")
+			end
+		else
+			callback(nil, "Netzwerkfehler beim Abrufen der Version")
+		end
+	end)
+end
+
+-- Funktion zum Vergleichen von Versionen
+local function compareVersions(installed, latest)
+	local function parseVersion(v)
+		local major, minor, revision = v:match("(%d+)%.(%d+)%.(%d+)")
+		if major then
+			return {major=tonumber(major), minor=tonumber(minor), revision=tonumber(revision)}
+		end
+		return nil
+	end
+
+	local inst = parseVersion(installed)
+	local lat = parseVersion(latest)
+
+	if not inst or not lat then return false end
+
+	if lat.major > inst.major or
+	   (lat.major == inst.major and lat.minor > inst.minor) or
+	   (lat.major == inst.major and lat.minor == inst.minor and lat.revision > inst.revision) then
+		return true  -- Update verfügbar
+	end
+	return false
+end
+
 -- Plugin Info Provider für Lightroom
 local pluginInfoProvider = {}
 
@@ -51,6 +95,13 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 		propertyTable.licenseValid = false
 		propertyTable.isValidatingLicense = false
 		propertyTable.licenseMessage = ""
+	end
+
+	-- Versionsprüfung Properties initialisieren
+	if not propertyTable.latestVersion then
+		propertyTable.latestVersion = "Wird geladen..."
+		propertyTable.updateAvailable = false
+		propertyTable.isCheckingVersion = false
 	end
 
 	-- Lizenz-Aktivierung Funktion
@@ -143,6 +194,113 @@ pluginInfoProvider.sectionsForTopOfDialog = function(f, propertyTable)
 							title = "• Direkter Upload in WordPress Mediathek\n• Bulk Upload (mehrere Dateien gleichzeitig)\n• Unterstützung für Application Passwords\n• Automatische Metadaten-Übertragung\n• Benutzerfreundliche Export-Konfiguration",
 							width_in_chars = 60,
 							height_in_lines = 4,
+						},
+					},
+				},
+
+				f:spacer { height = 2 },
+
+				-- Versionsinformationen
+				f:group_box {
+					title = "Versionsinformationen",
+					fill_horizontal = 1,
+
+					f:column {
+						spacing = f:control_spacing(),
+
+						f:row {
+							f:static_text {
+								title = "Installierte Version:",
+								width = 150,
+							},
+
+							f:static_text {
+								bind_to_object = propertyTable,
+								title = LrView.bind 'currentVersion',
+								font = "<system/bold>",
+							},
+						},
+
+						f:row {
+							f:static_text {
+								title = "Aktuelle Version auf GitHub:",
+								width = 150,
+							},
+
+							f:static_text {
+								bind_to_object = propertyTable,
+								title = LrView.bind 'latestVersion',
+								text_color = LrView.bind {
+									key = 'updateAvailable',
+									transform = function(available)
+										if available then
+											return LrColor(0.8, 0.5, 0)  -- Orange für Update verfügbar
+										else
+											return LrColor(0, 0.7, 0)  -- Grün für aktuell
+										end
+									end
+								},
+							},
+						},
+
+						f:row {
+							f:static_text {
+								bind_to_object = propertyTable,
+								title = LrView.bind {
+									key = 'updateAvailable',
+									transform = function(available)
+										if available then
+											return "Eine neuere Version ist verfügbar!"
+										else
+											return "Ihr Plugin ist auf dem neuesten Stand."
+										end
+									end
+								},
+								text_color = LrView.bind {
+									key = 'updateAvailable',
+									transform = function(available)
+										if available then
+											return LrColor(0.8, 0.5, 0)
+										else
+											return LrColor(0, 0.7, 0)
+										end
+									end
+								},
+							},
+
+							f:push_button {
+								title = "Updates prüfen",
+								action = function()
+									propertyTable.isCheckingVersion = true
+									propertyTable.latestVersion = "Wird geladen..."
+									getLatestGitHubVersion(function(latest, error)
+										if latest then
+											propertyTable.latestVersion = latest
+											local installed = propertyTable.currentVersion
+											propertyTable.updateAvailable = compareVersions(installed, latest)
+										else
+											propertyTable.latestVersion = "Fehler: " .. (error or "Unbekannt")
+											propertyTable.updateAvailable = false
+										end
+										propertyTable.isCheckingVersion = false
+									end)
+								end,
+								enabled = LrView.bind {
+									key = 'isCheckingVersion',
+									transform = function(checking)
+										return not checking
+									end
+								},
+							},
+
+							f:spacer { width = 2 },
+
+							f:push_button {
+								title = "Releases anzeigen",
+								action = function()
+									LrHttp.openUrlInBrowser("https://github.com/dermatz/lightroomcc-wordpress-export/releases")
+								end,
+							},
 						},
 					},
 				},
@@ -367,6 +525,11 @@ pluginInfoProvider.startDialog = function(propertyTable)
 	propertyTable:addObserver('isValidatingLicense', function() end)
 	propertyTable:addObserver('licenseMessage', function() end)
 
+	-- Properties für Versionsprüfung hinzufügen
+	propertyTable:addObserver('latestVersion', function() end)
+	propertyTable:addObserver('updateAvailable', function() end)
+	propertyTable:addObserver('isCheckingVersion', function() end)
+
 	-- Gespeicherte Lizenz aus Preferences laden
 	local storedLicense = LicenseManager.getStoredLicense()
 	if storedLicense.valid and storedLicense.licenseKey then
@@ -392,6 +555,18 @@ pluginInfoProvider.startDialog = function(propertyTable)
 		-- Auch bei fehlender Lizenz eine stille Startup-Prüfung durchführen (falls Daten inkonsistent sind)
 		LicenseManager.performSilentStartupCheck()
 	end
+
+	-- Versionsprüfung starten
+	getLatestGitHubVersion(function(latest, error)
+		if latest then
+			propertyTable.latestVersion = latest
+			local installed = propertyTable.currentVersion
+			propertyTable.updateAvailable = compareVersions(installed, latest)
+		else
+			propertyTable.latestVersion = "Fehler: " .. (error or "Unbekannt")
+			propertyTable.updateAvailable = false
+		end
+	end)
 end
 
 return pluginInfoProvider
