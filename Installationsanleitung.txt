@@ -1,0 +1,71 @@
+WordPress Export Plugin für Lightroom Classic
+==========================================
+
+Installationsanleitung
+======================
+
+Diese Anleitung führt Sie durch die Installation des WordPress Export Plugins für Adobe Lightroom Classic.
+
+Voraussetzungen
+---------------
+- Adobe Lightroom Classic (Version 6.0 oder höher)
+- Ein WordPress-Blog mit aktivierter REST API
+- Administrator-Zugang zu Ihrem WordPress-Blog
+
+Schritt 1: Nach dem entpacken
+---------------------------
+1. Entpacken Sie die heruntergeladene ZIP-Datei
+2. Sie erhalten einen Ordner namens "WordPressExport.lrplugin"
+
+Schritt 2: Plugin in Lightroom installieren
+-------------------------------------------
+1. Öffnen Sie Adobe Lightroom Classic
+2. Gehen Sie zu: Datei > Zusatzmodul-Manager
+3. Klicken Sie auf "Hinzufügen"
+4. Navigieren Sie zu dem entpackten "WordPressExport.lrplugin" Ordner und klicken Sie auf "Öffnen"
+
+Schritt 3: Plugin aktivieren
+---------------------------
+1. Im Plugin-Manager sollte nun "WordPress Export" aufgelistet sein
+2. Aktivieren Sie das Plugin durch Anklicken des Kontrollkästchens
+3. Das Plugin ist nun installiert und einsatzbereit
+
+Schritt 4: Lizenz aktivieren (erforderlich)
+-------------------------------------------
+1. Öffnen Sie den Plugin-Manager erneut
+2. Klicken Sie auf "WordPress Export" in der Liste
+3. Geben Sie Ihren Lizenzschlüssel im Feld "Lizenzschlüssel" ein
+4. Klicken Sie auf "Lizenz aktivieren"
+5. Bei Erfolg wird der Status auf "✓ Aktiviert" geändert
+
+Schritt 5: Plugin verwenden
+---------------------------
+1. Wählen Sie Fotos in Lightroom aus
+2. Gehen Sie zu: Datei > Exportieren (oder Rechtsklick > Exportieren)
+3. Wählen Sie oben bei "Exportieren auf:" bitte "WordPress Upload" als Export-Service
+4. Erstellen Sie ihr Anwendungs-Passort in wordpress
+   - Erstellen Sie ein Application Password in WordPress (unter Benutzer > Profil > Ihr Profilname f)
+4. Konfigurieren Sie die Export-Einstellungen:
+   - WordPress-URL
+   - Benutzername
+   - Application Password (nicht ihr normales Passwort)
+   - Upload-Optionen nach Wuunsch anpassen
+5. Klicken Sie auf "Exportieren"
+
+Konfiguration
+-------------
+- Stellen Sie sicher, dass Ihre WordPress-Site die REST API unterstützt
+- Verwenden Sie HTTPS für sichere Verbindungen für Ihren WordPress Blog/Website
+
+Fehlerbehebung
+--------------
+- Plugin lädt nicht: Überprüfen Sie die Lightroom-Version (min. 6.0)
+- Lizenz-Fehler: Überprüfen Sie Ihren Lizenzschlüssel und Internetverbindung
+- Upload-Fehler: Überprüfen Sie WordPress-URL, Anmeldedaten und API-Zugang
+
+Support
+-------
+Bei Problemen:
+- GitHub Issues: https://github.com/dermatz/lightroomcc-wordpress-export/issues
+- E-Mail: hello@dermatz.de
+- Website: https://dermatz.de/produkt/lightroom-classic-to-wordpress-exporter
