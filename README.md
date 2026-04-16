@@ -1,6 +1,19 @@
 # WordPress Export Plugin für Lightroom Classic
 
+![License](https://img.shields.io/github/license/dermatz/lightroomcc-wordpress-export)
+![Release](https://img.shields.io/github/v/release/dermatz/lightroomcc-wordpress-export)
+![WordPress](https://img.shields.io/badge/WordPress-%3E%3D5.6-blue?logo=wordpress)
+![Lightroom Classic](https://img.shields.io/badge/Lightroom%20Classic-%3E%3D10.0-blue?logo=adobe)
+
 Dieses Plugin ermöglicht den direkten Export von Bildern aus Lightroom Classic in die WordPress Mediathek über die WordPress REST API.
+
+## Voraussetzungen
+
+- **Adobe Lightroom Classic** Version 10.0 oder neuer
+- **WordPress** Version 5.6 oder neuer (für Application Password Unterstützung)
+- **PHP** Version 7.4 oder neuer
+- Aktivierte WordPress REST API
+- Benutzer mit Medien-Upload-Berechtigung (Rolle: Autor oder höher)
 
 ## Installation
 
@@ -70,4 +83,4 @@ Dieses Plugin ermöglicht den direkten Export von Bildern aus Lightroom Classic 
 ## Support
 
 Bei Problemen oder Fragen erstellen Sie bitte ein Issue im GitHub Repository:
-https://github.com/dermatz/lightroomcc-wordpress-export
+[GitHub Issues](https://github.com/dermatz/lightroomcc-wordpress-export/issues)
