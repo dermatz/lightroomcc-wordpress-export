@@ -12,7 +12,7 @@ Voraussetzungen
 - Ein WordPress-Blog mit aktivierter REST API
 - Administrator-Zugang zu Ihrem WordPress-Blog
 
-Schritt 1: Nach dem entpacken
+Schritt 1: Nach dem Entpacken
 ---------------------------
 1. Entpacken Sie die heruntergeladene ZIP-Datei
 2. Sie erhalten einen Ordner namens "WordPressExport.lrplugin"
@@ -43,18 +43,18 @@ Schritt 5: Plugin verwenden
 1. Wählen Sie Fotos in Lightroom aus
 2. Gehen Sie zu: Datei > Exportieren (oder Rechtsklick > Exportieren)
 3. Wählen Sie oben bei "Exportieren auf:" bitte "WordPress Upload" als Export-Service
-4. Erstellen Sie ihr Anwendungs-Passort in wordpress
-   - Erstellen Sie ein Application Password in WordPress (unter Benutzer > Profil > Ihr Profilname f)
-4. Konfigurieren Sie die Export-Einstellungen:
+4. Erstellen Sie Ihr Anwendungs-Passwort in WordPress
+   - Erstellen Sie ein Application Password in WordPress (unter Benutzer > Ihr Profilname > Anwendungspasswörter)
+5. Konfigurieren Sie die Export-Einstellungen:
    - WordPress-URL
    - Benutzername
    - Application Password (nicht ihr normales Passwort)
-   - Upload-Optionen nach Wuunsch anpassen
-5. Klicken Sie auf "Exportieren"
+   - Upload-Optionen nach Wunsch anpassen
+6. Klicken Sie auf "Exportieren"
 
 Konfiguration
 -------------
-- Stellen Sie sicher, dass Ihre WordPress-Site die REST API unterstützt
+- Stellen Sie sicher, dass Ihre WordPress-Site die REST API unterstützt (standardmäßig ab WordPress 4.7 aktiviert)
 - Verwenden Sie HTTPS für sichere Verbindungen für Ihren WordPress Blog/Website
 
 Fehlerbehebung
