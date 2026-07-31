@@ -17,13 +17,15 @@ Dieses Plugin ermöglicht den direkten Export von Bildern aus Lightroom Classic 
 
 ## Installation
 
-1. Laden Sie das Plugin herunter und entpacken Sie es
+1. Laden Sie die neueste Version aus den [GitHub Releases](https://github.com/dermatz/lightroomcc-wordpress-export/releases) herunter und entpacken Sie sie
 2. Kopieren Sie den `WordPressExport.lrplugin` Ordner an einen gewünschten Ort
 3. Öffnen Sie Lightroom Classic
 4. Gehen Sie zu `Datei > Zusatzmodulmanager`
 5. Klicken Sie auf `Hinzufügen`
 6. Navigieren Sie zum `WordPressExport.lrplugin` Ordner und wählen Sie ihn aus
 7. Klicken Sie auf `OK`
+
+> **Hinweis:** Dieses Plugin ist Open Source und kostenlos nutzbar. Es ist keine Lizenz oder Aktivierung erforderlich.
 
 ## Konfiguration
 

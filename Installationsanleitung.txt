@@ -30,15 +30,7 @@ Schritt 3: Plugin aktivieren
 2. Aktivieren Sie das Plugin durch Anklicken des Kontrollkästchens
 3. Das Plugin ist nun installiert und einsatzbereit
 
-Schritt 4: Lizenz aktivieren (erforderlich)
--------------------------------------------
-1. Öffnen Sie den Plugin-Manager erneut
-2. Klicken Sie auf "WordPress Export" in der Liste
-3. Geben Sie Ihren Lizenzschlüssel im Feld "Lizenzschlüssel" ein
-4. Klicken Sie auf "Lizenz aktivieren"
-5. Bei Erfolg wird der Status auf "✓ Aktiviert" geändert
-
-Schritt 5: Plugin verwenden
+Schritt 4: Plugin verwenden
 ---------------------------
 1. Wählen Sie Fotos in Lightroom aus
 2. Gehen Sie zu: Datei > Exportieren (oder Rechtsklick > Exportieren)
@@ -60,7 +52,6 @@ Konfiguration
 Fehlerbehebung
 --------------
 - Plugin lädt nicht: Überprüfen Sie die Lightroom-Version (min. 6.0)
-- Lizenz-Fehler: Überprüfen Sie Ihren Lizenzschlüssel und Internetverbindung
 - Upload-Fehler: Überprüfen Sie WordPress-URL, Anmeldedaten und API-Zugang
 
 Support
@@ -68,4 +59,4 @@ Support
 Bei Problemen:
 - GitHub Issues: https://github.com/dermatz/lightroomcc-wordpress-export/issues
 - E-Mail: hello@dermatz.de
-- Website: https://dermatz.de/produkt/lightroom-classic-to-wordpress-exporter
+- Website: https://github.com/dermatz/lightroomcc-wordpress-export

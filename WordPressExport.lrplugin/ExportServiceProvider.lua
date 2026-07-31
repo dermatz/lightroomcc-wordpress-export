@@ -19,7 +19,6 @@ local LrFunctionContext = import 'LrFunctionContext'
 local LrTasks = import 'LrTasks'
 
 local UploadTask = require 'UploadTask'
-local LicenseManager = require 'LicenseManager'
 
 local exportServiceProvider = {}
 
@@ -33,159 +32,130 @@ exportServiceProvider.sectionsForTopOfDialog = function(f, propertyTable)
 
 	local sections = {}
 
-	-- Lizenz-Status Warnung (falls nicht lizenziert)
-	if not LicenseManager.isPluginLicensed() then
-		table.insert(sections, {
-			title = "⚠️ Lizenz erforderlich",
+	table.insert(sections, {
+		title = "WordPress Einstellungen",
 
-			f:column {
-				spacing = f:control_spacing(),
+		f:column {
+			spacing = f:control_spacing(),
 
-				f:static_text {
-					title = "Dieses Plugin benötigt eine gültige Lizenz für den Export.",
-					font = "<system/bold>",
-					text_color = import('LrColor')(0.8, 0, 0), -- Rot
-					width_in_chars = 60,
-				},
-
-				f:spacer { height = 5 },
-
-				f:static_text {
-					title = "Bitte aktivieren Sie Ihre Lizenz im Plugin-Manager:\nZusatzmodule > Plugin-Manager > WordPress Export",
-					width_in_chars = 60,
-					height_in_lines = 2,
-				},
-
-				f:spacer { height = 10 },
-			}
-		})
-	else
-		-- Nur bei gültiger Lizenz: WordPress Export Einstellungen anzeigen
-		table.insert(sections, {
-			title = "WordPress Einstellungen",
-
-			f:column {
-				spacing = f:control_spacing(),
-
-					-- WordPress URL Feld
-					f:row {
-						f:static_text {
-							title = "WordPress URL:",
-							alignment = 'right',
-							width = LrView.share 'label_width'
-						},
-
-						f:edit_field {
-							bind_to_object = propertyTable,
-							value = LrView.bind 'wordpressUrl',
-							immediate = true,
-							width_in_chars = 35,
-							tooltip = "Die vollständige URL zu Ihrer WordPress-Installation (z.B. https://meineblog.de)"
-						},
-					},
-
-				-- Hilfstext für WordPress URL
+				-- WordPress URL Feld
 				f:row {
 					f:static_text {
-						title = "",
-						width = LrView.share 'label_width'
-					},
-
-					f:static_text {
-						title = "Beispiel: https://meineblog.de",
-						font = "<system/small>",
-						width_in_chars = 50,
-					},
-				},
-
-				f:spacer { height = 10 },
-
-				-- Benutzername Feld
-				f:row {
-					f:static_text {
-						title = "Benutzername:",
+						title = "WordPress URL:",
 						alignment = 'right',
 						width = LrView.share 'label_width'
 					},
 
 					f:edit_field {
 						bind_to_object = propertyTable,
-						value = LrView.bind 'wordpressUsername',
+						value = LrView.bind 'wordpressUrl',
 						immediate = true,
-						width_in_chars = 25,
-						tooltip = "Ihr WordPress-Benutzername (Administrator oder Editor)"
+						width_in_chars = 35,
+						tooltip = "Die vollständige URL zu Ihrer WordPress-Installation (z.B. https://meineblog.de)"
 					},
 				},
 
-				-- Hilfstext für Benutzername
-				f:row {
-					f:static_text {
-						title = "",
-						width = LrView.share 'label_width'
-					},
-
-					f:static_text {
-						title = "Benötigt Administrator- oder Editor-Rechte für Media-Upload",
-						font = "<system/small>",
-						width_in_chars = 50,
-					},
+			-- Hilfstext für WordPress URL
+			f:row {
+				f:static_text {
+					title = "",
+					width = LrView.share 'label_width'
 				},
 
-				f:spacer { height = 10 },
-
-				-- Passwort Feld
-				f:row {
-					f:static_text {
-						title = "Passwort:",
-						alignment = 'right',
-						width = LrView.share 'label_width'
-					},
-
-					f:password_field {
-						bind_to_object = propertyTable,
-						value = LrView.bind 'wordpressPassword',
-						immediate = true,
-						width_in_chars = 25,
-						tooltip = "Application Password (empfohlen) oder WordPress-Passwort"
-					},
+				f:static_text {
+					title = "Beispiel: https://meineblog.de",
+					font = "<system/small>",
+					width_in_chars = 50,
 				},
-
-				-- Hilfstext für Passwort
-				f:row {
-					f:static_text {
-						title = "",
-						width = LrView.share 'label_width'
-					},
-
-					f:static_text {
-						title = "Application Password wird sicher gespeichert. Erstellen Sie eins unter:\nBenutzer → Profil → Anwendungspasswörter",
-						font = "<system/small>",
-						width_in_chars = 50,
-						height_in_lines = 2,
-					},
-				},
-
-				f:spacer { height = 15 },
-
-				-- Allgemeiner Hinweis
-				f:row {
-					f:static_text {
-						title = "",
-						width = LrView.share 'label_width'
-					},
-
-					f:static_text {
-						title = "💡 Tipp: Application Passwords sind sicherer als normale Passwörter und können jederzeit widerrufen werden.",
-						font = "<system/small>",
-						width_in_chars = 55,
-						height_in_lines = 2,
-					},
-				},
-
-				f:spacer { height = 15 },
 			},
-		})
-	end  -- Ende der Lizenz-Prüfung
+
+			f:spacer { height = 10 },
+
+			-- Benutzername Feld
+			f:row {
+				f:static_text {
+					title = "Benutzername:",
+					alignment = 'right',
+					width = LrView.share 'label_width'
+				},
+
+				f:edit_field {
+					bind_to_object = propertyTable,
+					value = LrView.bind 'wordpressUsername',
+					immediate = true,
+					width_in_chars = 25,
+					tooltip = "Ihr WordPress-Benutzername (Administrator oder Editor)"
+				},
+			},
+
+			-- Hilfstext für Benutzername
+			f:row {
+				f:static_text {
+					title = "",
+					width = LrView.share 'label_width'
+				},
+
+				f:static_text {
+					title = "Benötigt Administrator- oder Editor-Rechte für Media-Upload",
+					font = "<system/small>",
+					width_in_chars = 50,
+				},
+			},
+
+			f:spacer { height = 10 },
+
+			-- Passwort Feld
+			f:row {
+				f:static_text {
+					title = "Passwort:",
+					alignment = 'right',
+					width = LrView.share 'label_width'
+				},
+
+				f:password_field {
+					bind_to_object = propertyTable,
+					value = LrView.bind 'wordpressPassword',
+					immediate = true,
+					width_in_chars = 25,
+					tooltip = "Application Password (empfohlen) oder WordPress-Passwort"
+				},
+			},
+
+			-- Hilfstext für Passwort
+			f:row {
+				f:static_text {
+					title = "",
+					width = LrView.share 'label_width'
+				},
+
+				f:static_text {
+					title = "Application Password wird sicher gespeichert. Erstellen Sie eins unter:\nBenutzer → Profil → Anwendungspasswörter",
+					font = "<system/small>",
+					width_in_chars = 50,
+					height_in_lines = 2,
+				},
+			},
+
+			f:spacer { height = 15 },
+
+			-- Allgemeiner Hinweis
+			f:row {
+				f:static_text {
+					title = "",
+					width = LrView.share 'label_width'
+				},
+
+				f:static_text {
+					title = "💡 Tipp: Application Passwords sind sicherer als normale Passwörter und können jederzeit widerrufen werden.",
+					font = "<system/small>",
+					width_in_chars = 55,
+					height_in_lines = 2,
+				},
+			},
+
+			f:spacer { height = 15 },
+		},
+	})
 
 	return sections
 end
@@ -194,29 +164,6 @@ end
 -- Export Process
 
 exportServiceProvider.processRenderedPhotos = function(functionContext, exportContext)
-
-	-- Umfassende Lizenz-Validierung vor dem Export
-	if not LicenseManager.isPluginLicensed() then
-		LrDialogs.message(
-			"Plugin nicht lizenziert",
-			"Dieses Plugin benötigt eine gültige Lizenz.\n\nBitte aktivieren Sie Ihre gekaufte Lizenz im Zusatzmodul-Manager > WordPress Export oder erwerben Sie eine Lizenz auf https://dermatz.de.\n\nSollten Sie Hilfe benötigen, kontaktieren Sie bitte den Support per E-Mail unter hello@dermatz.de.\n\nVielen Dank für Ihre Unterstützung!",
-			"critical"
-		)
-		-- Export sofort beenden
-		return
-	end
-
-	-- Zusätzliche Sicherheitsvalidierung
-	local storedLicense = LicenseManager.getStoredLicense()
-	if not storedLicense or not storedLicense.valid then
-		LrDialogs.message(
-			"Lizenzvalidierung fehlgeschlagen",
-			"Die Lizenzvalidierung ist fehlgeschlagen. Bitte aktivieren Sie Ihre Lizenz erneut im Zusatzmodul-Manager.",
-			"critical"
-		)
-		-- Export sofort beenden
-		return
-	end
 
 	LrFunctionContext.callWithContext('WordPressExport', function(context)
 
@@ -315,9 +262,6 @@ end
 -- Property Initialization
 
 exportServiceProvider.startDialog = function(propertyTable)
-
-	-- Automatische intelligente Lizenz-Revalidierung beim Export-Dialog Start
-	LicenseManager.performIntelligentStartupCheck(nil)
 
 	-- Properties explizit initialisieren
 	propertyTable:addObserver('wordpressUrl', function()
